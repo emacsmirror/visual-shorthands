@@ -1,12 +1,12 @@
 ;;; visual-shorthands.el --- Visual abbreviations for symbol prefixes -*- lexical-binding: t -*-
 
 ;; Author: Gino Cornejo
-;; Mantainer: Gino Cornejo <gggion123@gmail.com>
+;; Maintainer: Gino Cornejo <gggion123@gmail.com>
 ;; Homepage: https://github.com/gggion/visual-shorthands
-;; Keywords: hypermedia vc
+;; Keywords: convenience
 
 ;; Package-Version: 0.0.1
-;; Package-Requires: ((emacs  "29.1") (compat "30.1") (magit "4.3") (org "9.7") (orgit "2.0"))
+;; Package-Requires: ((emacs "29.1"))
 
 ;; SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -30,7 +30,7 @@
 ;;
 ;; Basic usage:
 ;;
-;;     (visual-shorthands-add "application_config_manager_" "acm_")
+;;     (visual-shorthands-add-mapping "application_config_manager_" "acm_")
 ;;     (visual-shorthands-mode 1)
 ;;
 ;; Abbreviates PREFIXES only, not whole symbols.
@@ -98,10 +98,6 @@ Automatically sorted by prefix length (longest first).")
   "\\_<\\([[:alpha:]][[:alnum:]-_]*\\)\\_>"
   "Regexp matching Emacs Lisp symbol names.")
 
-;; (defun visual-shorthands--symbol-regexp ()
-;;   "Return regexp matching symbols in current syntax table."
-;;   "\\(?:\\sw\\|\\s_\\)+")
-
 (defun visual-shorthands--current-symbol ()
   "Return bounds of symbol at point if it has a visual shorthand overlay.
 Returns (START . END) or nil."
@@ -111,18 +107,6 @@ Returns (START . END) or nil."
               (overlays (overlays-in start end)))
     (when (cl-some (lambda (ov) (overlay-get ov 'visual-shorthand)) overlays)
       symbol-bounds)))
-
-(defun visual-shorthands--face-at (pos)
-  "Return face property at POS, handling both atoms and lists."
-  (let ((face (get-text-property pos 'face)))
-    (if (listp face) face (list face))))
-
-(defun visual-shorthands--in-string-or-comment-p (pos)
-  "Return non-nil if POS is inside string or comment."
-  (let ((faces (visual-shorthands--face-at pos)))
-    (or (memq 'font-lock-string-face faces)
-        (memq 'font-lock-comment-face faces)
-        (memq 'font-lock-doc-face faces))))
 
 (defun visual-shorthands--create-overlay (beg end longhand shorthand)
   "Create overlay from BEG to END hiding LONGHAND and showing SHORTHAND.
