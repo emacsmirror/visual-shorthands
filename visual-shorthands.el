@@ -36,6 +36,7 @@
 ;; Abbreviates PREFIXES only, not whole symbols.
 
 ;;; Code:
+(require 'cl-lib)
 
 (defgroup visual-shorthands nil
   "Visual shorthand overlays for improved code readability."
@@ -85,6 +86,16 @@ Automatically sorted by prefix length (longest first).")
 ;; (defun visual-shorthands--symbol-regexp ()
 ;;   "Return regexp matching symbols in current syntax table."
 ;;   "\\(?:\\sw\\|\\s_\\)+")
+
+(defun visual-shorthands--current-symbol ()
+  "Return bounds of symbol at point if it has a visual shorthand overlay.
+Returns (START . END) or nil."
+  (when-let* ((symbol-bounds (bounds-of-thing-at-point 'symbol))
+              (start (car symbol-bounds))
+              (end (cdr symbol-bounds))
+              (overlays (overlays-in start end)))
+    (when (cl-some (lambda (ov) (overlay-get ov 'visual-shorthand)) overlays)
+      symbol-bounds)))
 
 (defun visual-shorthands--face-at (pos)
   "Return face property at POS, handling both atoms and lists."
