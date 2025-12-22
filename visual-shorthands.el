@@ -113,30 +113,38 @@ Uses invisible property on the longhand prefix and before-string for shorthand."
     (overlay-put overlay 'evaporate t)
     overlay))
 
-(defun visual-shorthands--apply ()
-  "Apply abbreviations to all symbols in buffer.
-
-Skips strings and comments by checking `font-lock-face' property.
-Requires `font-lock-ensure' to have run first."
+(defun visual-shorthands--apply-to-region (start end)
+  "Apply visual shorthands to symbols between START and END."
   (when visual-shorthands-alist
     (save-excursion
-      (save-restriction
-        (widen)
-        (font-lock-ensure (point-min) (point-max))
-        (add-to-invisibility-spec 'visual-shorthands)
-        (goto-char (point-min))
-        (let ((case-fold-search nil)
-              (regexp (visual-shorthands--symbol-regexp)))
-          (while (re-search-forward regexp nil t)
-            (let ((start (match-beginning 0))
-                  (name (match-string-no-properties 0)))
-              (unless (visual-shorthands--in-string-or-comment-p start)
-                (catch 'done
-                  (dolist (pair visual-shorthands-alist)
-                    (when (string-prefix-p (car pair) name)
+      (goto-char start)
+      (let ((case-fold-search nil)
+            (limit (min end (point-max))))
+        (while (re-search-forward visual-shorthands--symbol-regexp limit t)
+          (let ((symbol-start (match-beginning 1))
+                (symbol-end (match-end 1))
+                (symbol-name (match-string-no-properties 1))
+                (face-at-point (get-text-property (match-beginning 1) 'face)))
+            (unless (or (eq face-at-point 'font-lock-string-face)
+                        (eq face-at-point 'font-lock-comment-face)
+                        (eq face-at-point 'font-lock-doc-face))
+              (catch 'matched
+                (dolist (mapping visual-shorthands-alist)
+                  (let ((longhand (car mapping))
+                        (shorthand (cdr mapping)))
+                    (when (string-prefix-p longhand symbol-name)
                       (visual-shorthands--create-overlay
-                       start (car pair) (cdr pair))
-                      (throw 'done t))))))))))))
+                       symbol-start symbol-end longhand shorthand)
+                      (throw 'matched t))))))))))))
+
+(defun visual-shorthands--apply-to-buffer ()
+  "Apply visual shorthands to all matching symbols in current buffer."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (font-lock-ensure (point-min) (point-max))
+      (add-to-invisibility-spec 'visual-shorthands)
+      (visual-shorthands--apply-to-region (point-min) (point-max)))))
 
 ;;;; Commands
 
