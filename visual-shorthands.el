@@ -81,6 +81,9 @@ Each element has the form (LONGHAND . SHORTHAND) where LONGHAND
 is the full prefix to replace and SHORTHAND is the visual replacement.
 Longer prefixes should come first for correct matching.")
 
+;; Survive buffer revert and major mode changes
+(put 'visual-shorthands-alist 'permanent-local t)
+
 (defvar-local visual-shorthands--prev-symbol nil
   "Previous symbol bounds that surrounded the cursor.")
 
