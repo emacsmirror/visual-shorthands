@@ -78,10 +78,13 @@ Automatically sorted by prefix length (longest first).")
   "Non-nil if the last encountered symbol has been revealed.")
 
 ;;;; Core Implementation
+(defconst visual-shorthands--symbol-regexp
+  "\\_<\\([[:alpha:]][[:alnum:]-_]*\\)\\_>"
+  "Regexp matching Emacs Lisp symbol names.")
 
-(defun visual-shorthands--symbol-regexp ()
-  "Return regexp matching symbols in current syntax table."
-  "\\(?:\\sw\\|\\s_\\)+")
+;; (defun visual-shorthands--symbol-regexp ()
+;;   "Return regexp matching symbols in current syntax table."
+;;   "\\(?:\\sw\\|\\s_\\)+")
 
 (defun visual-shorthands--face-at (pos)
   "Return face property at POS, handling both atoms and lists."
