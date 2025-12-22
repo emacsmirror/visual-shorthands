@@ -278,6 +278,22 @@ Abbreviates PREFIXES only:
     (visual-shorthands-mode 1))
   (message "Added: %s → %s" longhand shorthand))
 
+
+;;;###autoload
+(defun visual-shorthands-manual-start ()
+  "Signal that symbols in current buffer should be revealed."
+  (interactive)
+  (setq visual-shorthands--do-reveal t))
+
+;;;###autoload
+(defun visual-shorthands-manual-stop ()
+  "Signal that symbols should no longer be auto-revealed."
+  (interactive)
+  (when-let ((current-symbol (visual-shorthands--current-symbol)))
+    (visual-shorthands--hide-symbol current-symbol)
+    (setq visual-shorthands--symbol-revealed nil))
+  (setq visual-shorthands--do-reveal nil))
+
 ;;;###autoload
 (define-minor-mode visual-shorthands-mode
   "Visually abbreviate symbol prefixes.
@@ -286,7 +302,7 @@ Abbreviates prefixes defined in `visual-shorthands-alist'.
 Buffer content remains unchanged - this is display-only."
   :lighter " VS"
   (if visual-shorthands-mode
-      (visual-shorthands--apply)
+      (visual-shorthands--apply-to-buffer)
     (remove-overlays (point-min) (point-max) 'vs-shorthand t)
     (remove-from-invisibility-spec 'visual-shorthands)))
 
