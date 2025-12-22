@@ -310,6 +310,14 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
   (setq visual-shorthands--do-reveal nil))
 
 ;;;###autoload
+(defun visual-shorthands-setup (mappings)
+  "Set up visual shorthands with MAPPINGS and enable mode."
+  (setq visual-shorthands-alist
+        (sort (copy-sequence mappings)
+              (lambda (a b) (> (length (car a)) (length (car b))))))
+  (visual-shorthands-mode 1))
+
+;;;###autoload
 (define-minor-mode visual-shorthands-mode
   "Toggle visual shorthand overlays with auto-reveal in current buffer.
 
