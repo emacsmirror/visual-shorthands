@@ -206,6 +206,50 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
       (font-lock-ensure start end)
       (visual-shorthands--reveal-symbol symbol-bounds))))
 
+(defun visual-shorthands--post-cmd ()
+  "Handle cursor movement for auto-reveal functionality."
+  (let* ((prev-symbol visual-shorthands--prev-symbol)
+         (current-symbol (visual-shorthands--current-symbol)))
+
+    ;; After leaving a symbol
+    (when (and prev-symbol
+               visual-shorthands--symbol-revealed
+               (not (equal prev-symbol current-symbol)))
+
+      (setq visual-shorthands--symbol-revealed nil)
+
+      (if (not visual-shorthands--timer)
+          (visual-shorthands--hide-symbol prev-symbol)
+        (cancel-timer visual-shorthands--timer)
+        (setq visual-shorthands--timer nil)))
+
+    ;; Inside a symbol
+    (when (and current-symbol
+               (or (eq visual-shorthands-trigger 'always)
+                   visual-shorthands--do-reveal
+                   visual-shorthands--symbol-revealed))
+
+      (setq visual-shorthands--symbol-revealed t)
+
+      ;; New symbol, delay first reveal
+      (when (and (eq visual-shorthands-trigger 'always)
+                 (> visual-shorthands-delay 0)
+                 (not (equal prev-symbol current-symbol)))
+        (setq visual-shorthands--timer
+              (run-with-idle-timer visual-shorthands-delay
+                                   nil
+                                   #'visual-shorthands--reveal-with-lock
+                                   current-symbol
+                                   t)))
+
+      ;; Not a new symbol or no delay
+      (when (not visual-shorthands--timer)
+        (visual-shorthands--reveal-with-lock current-symbol)))
+
+    (setq visual-shorthands--prev-symbol current-symbol)
+    (when (not (eq visual-shorthands-trigger 'manual))
+      (setq visual-shorthands--do-reveal nil))))
+
 ;;;; Commands
 
 ;;;###autoload
