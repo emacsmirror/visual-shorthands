@@ -412,8 +412,7 @@ Mappings are sorted by descending LONGHAND length for correct matching.
 If `visual-shorthands-mode' is active, immediately applies overlays
 to all matching symbols.
 
-Also see `visual-shorthands-remove-mapping' and
-`visual-shorthands-clear-mappings'."
+Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
   (interactive
    (progn
      (add-hook 'minibuffer-setup-hook
@@ -424,8 +423,7 @@ Also see `visual-shorthands-remove-mapping' and
                 (shorthand-input
                  (progn
                    (visual-shorthands--preview-cleanup)
-                   (read-string (format "Shorthand for '%s': " longhand-input)
-                                longhand-input))))
+                   (read-string (format "Shorthand for '%s': " longhand-input)))))
            (list longhand-input shorthand-input))
        (visual-shorthands--preview-cleanup)
        (remove-hook 'minibuffer-setup-hook
