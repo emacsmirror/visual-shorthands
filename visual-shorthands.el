@@ -117,11 +117,11 @@ Applied to longhand prefixes that will be hidden if mapping is confirmed."
   :group 'visual-shorthands)
 
 
-(defun visual-shorthands--create-overlay (beg end longhand shorthand)
-  "Create overlay from BEG to END hiding LONGHAND and showing SHORTHAND.
+(defun visual-shorthands--create-overlay (beg _end longhand shorthand)
+  "Create overlay from BEG hiding LONGHAND and showing SHORTHAND.
+Argument END is ignored; overlay covers only the LONGHAND prefix portion.
 Uses invisible property on the longhand prefix and before-string for shorthand."
   (let* ((longhand-len (length longhand))
-         (shorthand-len (length shorthand))
          ;; Overlay covers only the prefix that needs to be hidden
          (overlay (make-overlay beg (+ beg longhand-len) nil t nil))
          ;; Create propertized shorthand string with face
@@ -359,7 +359,6 @@ Returns count of matched symbols."
           (goto-char (point-min))
           (while (re-search-forward re nil t)
             (let* ((symbol-start (match-beginning 0))
-                   (symbol-end (match-end 0))
                    (face-at-point (get-text-property symbol-start 'face))
                    (longhand-end (+ symbol-start (length longhand))))
               ;; Skip strings and comments
