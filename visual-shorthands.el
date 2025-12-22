@@ -75,11 +75,11 @@ Only applied to the shorthand prefix portion of symbols."
   :type 'number
   :group 'visual-shorthands)
 
-;;;; Internal variables
-
 (defvar-local visual-shorthands-alist nil
-  "Alist of (LONGHAND-PREFIX . SHORTHAND-PREFIX) pairs.
-Automatically sorted by prefix length (longest first).")
+  "Buffer-local alist of visual shorthand mappings.
+Each element has the form (LONGHAND . SHORTHAND) where LONGHAND
+is the full prefix to replace and SHORTHAND is the visual replacement.
+Longer prefixes should come first for correct matching.")
 
 (defvar-local visual-shorthands--prev-symbol nil
   "Previous symbol bounds that surrounded the cursor.")
@@ -93,30 +93,23 @@ Automatically sorted by prefix length (longest first).")
 (defvar-local visual-shorthands--symbol-revealed nil
   "Non-nil if the last encountered symbol has been revealed.")
 
-;;;; Core Implementation
 (defconst visual-shorthands--symbol-regexp
   "\\_<\\([[:alpha:]][[:alnum:]-_]*\\)\\_>"
   "Regexp matching Emacs Lisp symbol names.")
-
-(defun visual-shorthands--current-symbol ()
-  "Return bounds of symbol at point if it has a visual shorthand overlay.
-Returns (START . END) or nil."
-  (when-let* ((symbol-bounds (bounds-of-thing-at-point 'symbol))
-              (start (car symbol-bounds))
-              (end (cdr symbol-bounds))
-              (overlays (overlays-in start end)))
-    (when (cl-some (lambda (ov) (overlay-get ov 'visual-shorthand)) overlays)
-      symbol-bounds)))
 
 (defun visual-shorthands--create-overlay (beg end longhand shorthand)
   "Create overlay from BEG to END hiding LONGHAND and showing SHORTHAND.
 Uses invisible property on the longhand prefix and before-string for shorthand."
   (let* ((longhand-len (length longhand))
          (shorthand-len (length shorthand))
+         ;; Overlay covers only the prefix that needs to be hidden
          (overlay (make-overlay beg (+ beg longhand-len) nil t nil))
+         ;; Create propertized shorthand string with face
          (shorthand-string (propertize shorthand
                                        'face 'visual-shorthands-face)))
+    ;; Make the longhand prefix invisible
     (overlay-put overlay 'invisible 'visual-shorthands)
+    ;; Show the shorthand before the invisible text
     (overlay-put overlay 'before-string shorthand-string)
     (overlay-put overlay 'visual-shorthand t)
     (overlay-put overlay 'visual-shorthand-data (cons longhand shorthand))
@@ -135,9 +128,11 @@ Uses invisible property on the longhand prefix and before-string for shorthand."
                 (symbol-end (match-end 1))
                 (symbol-name (match-string-no-properties 1))
                 (face-at-point (get-text-property (match-beginning 1) 'face)))
+            ;; Skip if in string or comment
             (unless (or (eq face-at-point 'font-lock-string-face)
                         (eq face-at-point 'font-lock-comment-face)
                         (eq face-at-point 'font-lock-doc-face))
+              ;; Try each mapping
               (catch 'matched
                 (dolist (mapping visual-shorthands-alist)
                   (let ((longhand (car mapping))
@@ -153,8 +148,19 @@ Uses invisible property on the longhand prefix and before-string for shorthand."
     (save-restriction
       (widen)
       (font-lock-ensure (point-min) (point-max))
+      ;; Add to invisibility spec
       (add-to-invisibility-spec 'visual-shorthands)
       (visual-shorthands--apply-to-region (point-min) (point-max)))))
+
+(defun visual-shorthands--current-symbol ()
+  "Return bounds of symbol at point if it has a visual shorthand overlay.
+Returns (START . END) or nil."
+  (when-let* ((symbol-bounds (bounds-of-thing-at-point 'symbol))
+              (start (car symbol-bounds))
+              (end (cdr symbol-bounds))
+              (overlays (overlays-in start end)))
+    (when (cl-some (lambda (ov) (overlay-get ov 'visual-shorthand)) overlays)
+      symbol-bounds)))
 
 (defun visual-shorthands--reveal-symbol (symbol-bounds)
   "Reveal the symbol at SYMBOL-BOUNDS by removing invisibility."
@@ -202,6 +208,7 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
 
       (setq visual-shorthands--symbol-revealed nil)
 
+      ;; If timer fired and expired
       (if (not visual-shorthands--timer)
           (visual-shorthands--hide-symbol prev-symbol)
         (cancel-timer visual-shorthands--timer)
@@ -238,73 +245,11 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
   "Signal that symbols in current buffer should be revealed on change."
   (setq visual-shorthands--do-reveal t))
 
-;;;; Commands
-
-;;;###autoload
-(defun visual-shorthands-reveal-at-point ()
-  "Manually reveal the symbol at point."
-  (interactive)
-  (if-let ((symbol-bounds (visual-shorthands--current-symbol)))
-      (progn
-        (visual-shorthands--reveal-symbol symbol-bounds)
-        (message "Symbol revealed"))
-    (message "No shortened symbol at point")))
-
-;;;###autoload
-(defun visual-shorthands-hide-at-point ()
-  "Manually hide the symbol at point."
-  (interactive)
-  (if-let ((symbol-bounds (bounds-of-thing-at-point 'symbol)))
-      (progn
-        (visual-shorthands--hide-symbol symbol-bounds)
-        (message "Symbol hidden"))
-    (message "No symbol at point")))
-
-;;;###autoload
-(defun visual-shorthands-add-mapping (longhand shorthand)
-  "Add visual shorthand mapping from LONGHAND to SHORTHAND."
-  (interactive "sLonghand prefix: \nsShorthand replacement: ")
-  (setq visual-shorthands-alist
-        (cons (cons longhand shorthand)
-              (assoc-delete-all longhand visual-shorthands-alist)))
-  (setq visual-shorthands-alist
-        (sort visual-shorthands-alist
-              (lambda (a b) (> (length (car a)) (length (car b))))))
-  (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (visual-shorthands--apply-to-buffer))
-  (message "Added mapping: %s → %s" longhand shorthand))
-
-;;;###autoload
-(defun visual-shorthands-remove-mapping (longhand)
-  "Remove visual shorthand mapping for LONGHAND."
-  (interactive
-   (list (completing-read "Remove mapping for: "
-                          (mapcar #'car visual-shorthands-alist)
-                          nil t)))
-  (setq visual-shorthands-alist
-        (assoc-delete-all longhand visual-shorthands-alist))
-  (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (visual-shorthands--apply-to-buffer))
-  (message "Removed mapping for: %s" longhand))
-
-(defun visual-shorthands-clear-mappings ()
-  "Clear all visual shorthand mappings."
-  (interactive)
-  (setq visual-shorthands-alist nil)
-  (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (remove-from-invisibility-spec 'visual-shorthands))
-  (message "Cleared all visual shorthand mappings"))
-
-;;;###autoload
 (defun visual-shorthands-manual-start ()
   "Signal that symbols in current buffer should be revealed."
   (interactive)
   (setq visual-shorthands--do-reveal t))
 
-;;;###autoload
 (defun visual-shorthands-manual-stop ()
   "Signal that symbols should no longer be auto-revealed."
   (interactive)
@@ -312,14 +257,6 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
     (visual-shorthands--hide-symbol current-symbol)
     (setq visual-shorthands--symbol-revealed nil))
   (setq visual-shorthands--do-reveal nil))
-
-;;;###autoload
-(defun visual-shorthands-setup (mappings)
-  "Set up visual shorthands with MAPPINGS and enable mode."
-  (setq visual-shorthands-alist
-        (sort (copy-sequence mappings)
-              (lambda (a b) (> (length (car a)) (length (car b))))))
-  (visual-shorthands-mode 1))
 
 ;;;###autoload
 (define-minor-mode visual-shorthands-mode
@@ -359,6 +296,73 @@ actual buffer text."
     (setq visual-shorthands--prev-symbol nil
           visual-shorthands--symbol-revealed nil
           visual-shorthands--do-reveal nil))))
+
+;;;###autoload
+(defun visual-shorthands-add-mapping (longhand shorthand)
+  "Add visual shorthand mapping from LONGHAND to SHORTHAND."
+  (interactive "sLonghand prefix: \nsShorthand replacement: ")
+  (setq visual-shorthands-alist
+        (cons (cons longhand shorthand)
+              (assoc-delete-all longhand visual-shorthands-alist)))
+  (setq visual-shorthands-alist
+        (sort visual-shorthands-alist
+              (lambda (a b) (> (length (car a)) (length (car b))))))
+  (when visual-shorthands-mode
+    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
+    (visual-shorthands--apply-to-buffer))
+  (message "Added mapping: %s → %s" longhand shorthand))
+
+;;;###autoload
+(defun visual-shorthands-remove-mapping (longhand)
+  "Remove visual shorthand mapping for LONGHAND."
+  (interactive
+   (list (completing-read "Remove mapping for: "
+                          (mapcar #'car visual-shorthands-alist)
+                          nil t)))
+  (setq visual-shorthands-alist
+        (assoc-delete-all longhand visual-shorthands-alist))
+  (when visual-shorthands-mode
+    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
+    (visual-shorthands--apply-to-buffer))
+  (message "Removed mapping for: %s" longhand))
+
+;;;###autoload
+(defun visual-shorthands-clear-mappings ()
+  "Clear all visual shorthand mappings."
+  (interactive)
+  (setq visual-shorthands-alist nil)
+  (when visual-shorthands-mode
+    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
+    (remove-from-invisibility-spec 'visual-shorthands))
+  (message "Cleared all visual shorthand mappings"))
+
+;;;###autoload
+(defun visual-shorthands-setup (mappings)
+  "Set up visual shorthands with MAPPINGS and enable mode."
+  (setq visual-shorthands-alist
+        (sort (copy-sequence mappings)
+              (lambda (a b) (> (length (car a)) (length (car b))))))
+  (visual-shorthands-mode 1))
+
+;;;###autoload
+(defun visual-shorthands-reveal-at-point ()
+  "Manually reveal the symbol at point."
+  (interactive)
+  (if-let ((symbol-bounds (visual-shorthands--current-symbol)))
+      (progn
+        (visual-shorthands--reveal-symbol symbol-bounds)
+        (message "Symbol revealed"))
+    (message "No shortened symbol at point")))
+
+;;;###autoload
+(defun visual-shorthands-hide-at-point ()
+  "Manually hide the symbol at point."
+  (interactive)
+  (if-let ((symbol-bounds (bounds-of-thing-at-point 'symbol)))
+      (progn
+        (visual-shorthands--hide-symbol symbol-bounds)
+        (message "Symbol hidden"))
+    (message "No symbol at point")))
 
 (provide 'visual-shorthands)
 ;;; visual-shorthands.el ends here
