@@ -42,6 +42,23 @@
   :group 'convenience
   :prefix "visual-shorthands-")
 
+(defface visual-shorthands-face
+  '((((class color) (min-colors 88) (background light))
+     :inherit elisp-shorthand-font-lock-face
+     :background "#e0e0e0"
+     :extend nil)
+    (((class color) (min-colors 88) (background dark))
+     :inherit elisp-shorthand-font-lock-face
+     :background "#404040"
+     :extend nil)
+    (t :inherit elisp-shorthand-font-lock-face
+       :box (:line-width -1)))
+  "Face for visual shorthand overlays.
+Inherits from `elisp-shorthand-font-lock-face' but adds a subtle
+background to distinguish visual shorthands from real shorthands.
+Only applied to the shorthand prefix portion of symbols."
+  :group 'visual-shorthands)
+
 (defvar-local visual-shorthands-alist nil
   "Alist of (LONGHAND-PREFIX . SHORTHAND-PREFIX) pairs.
 Automatically sorted by prefix length (longest first).")
