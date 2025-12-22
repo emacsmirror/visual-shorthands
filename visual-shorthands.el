@@ -97,6 +97,23 @@ Longer prefixes should come first for correct matching.")
   "\\_<\\([[:alpha:]][[:alnum:]-_]*\\)\\_>"
   "Regexp matching Emacs Lisp symbol names.")
 
+(defvar-local visual-shorthands--preview-overlays nil
+  "List of overlays showing preview of shorthand mapping.
+Used during interactive mapping creation to highlight matches.
+Managed by `visual-shorthands--preview-cleanup' and
+`visual-shorthands--preview-refresh'.")
+
+(defface visual-shorthands-preview-face
+  '((((class color) (min-colors 88) (background light))
+     :background "#ffff00" :foreground "#000000")
+    (((class color) (min-colors 88) (background dark))
+     :background "#cdcd00" :foreground "#000000")
+    (t :inverse-video t))
+  "Face for preview overlays during interactive mapping creation.
+Applied to longhand prefixes that will be hidden if mapping is confirmed."
+  :group 'visual-shorthands)
+
+
 (defun visual-shorthands--create-overlay (beg end longhand shorthand)
   "Create overlay from BEG to END hiding LONGHAND and showing SHORTHAND.
 Uses invisible property on the longhand prefix and before-string for shorthand."
@@ -297,19 +314,117 @@ actual buffer text."
           visual-shorthands--symbol-revealed nil
           visual-shorthands--do-reveal nil))))
 
+;;;; Preview Highlights
+(defun visual-shorthands--preview-cleanup ()
+  "Remove all preview overlays.
+Called when exiting interactive mapping creation."
+  (while visual-shorthands--preview-overlays
+    (delete-overlay (car visual-shorthands--preview-overlays))
+    (setq visual-shorthands--preview-overlays
+          (cdr visual-shorthands--preview-overlays))))
+
+(defun visual-shorthands--preview-refresh (longhand)
+  "Refresh preview overlays for LONGHAND prefix.
+Removes existing preview overlays and creates new ones for all
+symbols in buffer starting with LONGHAND.
+
+Returns count of matched symbols."
+  (visual-shorthands--preview-cleanup)
+  (when (and longhand (> (length longhand) 0))
+    (let ((case-fold-search nil)
+          (count 0)
+          (re (concat "\\_<" (regexp-quote longhand) "\\(?:\\sw\\|\\s_\\)+")))
+      (save-excursion
+         (save-restriction
+         (widen)
+         (goto-char (point-min))
+         (while (re-search-forward re nil t)
+            (let* ((symbol-start (match-beginning 0))
+                   (symbol-end (match-end 0))
+                   (face-at-point (get-text-property symbol-start 'face))
+                   (longhand-end (+ symbol-start (length longhand))))
+              ;; Skip strings and comments
+              (unless (or (eq face-at-point 'font-lock-string-face)
+                          (eq face-at-point 'font-lock-comment-face)
+                          (eq face-at-point 'font-lock-doc-face))
+                (let ((ov (make-overlay symbol-start longhand-end)))
+                  (overlay-put ov 'face 'visual-shorthands-preview-face)
+                  (overlay-put ov 'priority 1001)
+                  (overlay-put ov 'visual-shorthands-preview t)
+                  (push ov visual-shorthands--preview-overlays)
+                  (setq count (1+ count))))))))
+      count)))
+
+(defun visual-shorthands--preview-minibuffer-setup ()
+  "Set up preview overlay refresh on minibuffer input.
+Installed on `minibuffer-setup-hook' during interactive mapping."
+  (when (minibufferp)
+    (add-hook 'after-change-functions
+              #'visual-shorthands--preview-after-change
+              nil t)))
+
+(defun visual-shorthands--preview-after-change (&rest _)
+  "Refresh preview overlays after minibuffer content changes.
+Installed on buffer-local `after-change-functions' during interactive
+mapping creation."
+  (when (minibufferp)
+    (let ((longhand (minibuffer-contents-no-properties)))
+      (with-selected-window (or (minibuffer-selected-window)
+                                (selected-window))
+        (visual-shorthands--preview-refresh longhand)))))
+
+;;;; Interactive functions
+
 ;;;###autoload
 (defun visual-shorthands-add-mapping (longhand shorthand)
-  "Add visual shorthand mapping from LONGHAND to SHORTHAND."
-  (interactive "sLonghand prefix: \nsShorthand replacement: ")
+  "Add visual shorthand mapping from LONGHAND to SHORTHAND.
+
+When called interactively, dynamically highlights symbols in buffer
+matching LONGHAND as you type.  Highlighting uses
+`visual-shorthands-preview-face' to show which prefix portions will
+be hidden.
+
+LONGHAND is the full prefix to replace.
+SHORTHAND is the visual replacement.
+
+Updates `visual-shorthands-alist' by adding or replacing mapping.
+Mappings are sorted by descending LONGHAND length for correct matching.
+
+If `visual-shorthands-mode' is active, immediately applies overlays
+to all matching symbols.
+
+Also see `visual-shorthands-remove-mapping' and
+`visual-shorthands-clear-mappings'."
+  (interactive
+   (progn
+     (add-hook 'minibuffer-setup-hook
+               #'visual-shorthands--preview-minibuffer-setup)
+     (unwind-protect
+         (let* ((longhand-input
+                 (read-string "Longhand prefix: "))
+                (shorthand-input
+                 (progn
+                   (visual-shorthands--preview-cleanup)
+                   (read-string (format "Shorthand for '%s': " longhand-input)
+                                longhand-input))))
+           (list longhand-input shorthand-input))
+       (visual-shorthands--preview-cleanup)
+       (remove-hook 'minibuffer-setup-hook
+                    #'visual-shorthands--preview-minibuffer-setup))))
+
+  ;; Update alist, maintaining sort order
   (setq visual-shorthands-alist
         (cons (cons longhand shorthand)
               (assoc-delete-all longhand visual-shorthands-alist)))
   (setq visual-shorthands-alist
         (sort visual-shorthands-alist
               (lambda (a b) (> (length (car a)) (length (car b))))))
+
+  ;; Refresh if mode active
   (when visual-shorthands-mode
     (remove-overlays (point-min) (point-max) 'visual-shorthand t)
     (visual-shorthands--apply-to-buffer))
+
   (message "Added mapping: %s → %s" longhand shorthand))
 
 ;;;###autoload
