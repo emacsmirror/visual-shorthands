@@ -271,6 +271,19 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
     (visual-shorthands--apply-to-buffer))
   (message "Added mapping: %s → %s" longhand shorthand))
 
+;;;###autoload
+(defun visual-shorthands-remove-mapping (longhand)
+  "Remove visual shorthand mapping for LONGHAND."
+  (interactive
+   (list (completing-read "Remove mapping for: "
+                          (mapcar #'car visual-shorthands-alist)
+                          nil t)))
+  (setq visual-shorthands-alist
+        (assoc-delete-all longhand visual-shorthands-alist))
+  (when visual-shorthands-mode
+    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
+    (visual-shorthands--apply-to-buffer))
+  (message "Removed mapping for: %s" longhand))
 
 ;;;###autoload
 (defun visual-shorthands-manual-start ()
