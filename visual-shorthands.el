@@ -64,12 +64,10 @@ Only applied to the shorthand prefix portion of symbols."
 
 (defcustom visual-shorthands-trigger 'always
   "Method of triggering element toggling.
-`always' means that symbols are revealed when cursor enters them.
-`on-change' means symbols are revealed only when buffer is modified.
-`manual' means toggling starts on `visual-shorthands-manual-start'."
+`always' means symbols are revealed when cursor enters them.
+`on-change' means symbols are revealed only when buffer is modified."
   :type '(choice (const :tag "Always reveal on cursor" always)
-          (const :tag "Only on buffer change" on-change)
-          (const :tag "Manual control" manual))
+          (const :tag "Only on buffer change" on-change))
   :group 'visual-shorthands)
 
 (defcustom visual-shorthands-delay 0.0
@@ -260,8 +258,7 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
         (visual-shorthands--reveal-with-lock current-symbol)))
 
     (setq visual-shorthands--prev-symbol current-symbol)
-    (when (not (eq visual-shorthands-trigger 'manual))
-      (setq visual-shorthands--do-reveal nil))))
+    (setq visual-shorthands--do-reveal nil)))
 
 (defun visual-shorthands--after-change (&rest _args)
   "Signal that symbols in current buffer should be revealed on change."
@@ -278,19 +275,6 @@ Installed on `before-revert-hook' when mode is active."
 Installed on `after-revert-hook' when mode is active."
   (when visual-shorthands-mode
     (visual-shorthands--apply-to-buffer)))
-
-(defun visual-shorthands-manual-start ()
-  "Signal that symbols in current buffer should be revealed."
-  (interactive)
-  (setq visual-shorthands--do-reveal t))
-
-(defun visual-shorthands-manual-stop ()
-  "Signal that symbols should no longer be auto-revealed."
-  (interactive)
-  (when-let ((current-symbol (visual-shorthands--current-symbol)))
-    (visual-shorthands--hide-symbol current-symbol)
-    (setq visual-shorthands--symbol-revealed nil))
-  (setq visual-shorthands--do-reveal nil))
 
 ;;;###autoload
 (define-minor-mode visual-shorthands-mode
@@ -476,26 +460,6 @@ Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
         (sort (copy-sequence mappings)
               (lambda (a b) (> (length (car a)) (length (car b))))))
   (visual-shorthands-mode 1))
-
-;;;###autoload
-(defun visual-shorthands-reveal-at-point ()
-  "Manually reveal the symbol at point."
-  (interactive)
-  (if-let ((symbol-bounds (visual-shorthands--current-symbol)))
-      (progn
-        (visual-shorthands--reveal-symbol symbol-bounds)
-        (message "Symbol revealed"))
-    (message "No shortened symbol at point")))
-
-;;;###autoload
-(defun visual-shorthands-hide-at-point ()
-  "Manually hide the symbol at point."
-  (interactive)
-  (if-let ((symbol-bounds (bounds-of-thing-at-point 'symbol)))
-      (progn
-        (visual-shorthands--hide-symbol symbol-bounds)
-        (message "Symbol hidden"))
-    (message "No symbol at point")))
 
 (provide 'visual-shorthands)
 ;;; visual-shorthands.el ends here
