@@ -2,7 +2,7 @@
 
 ;; Author: Gino Cornejo
 ;; Maintainer: Gino Cornejo <gggion123@gmail.com>
-;; Homepage: https://github.com/gggion/visual-shorthands
+;; Homepage: https://github.com/gggion/visual-shorthands.el
 ;; Keywords: convenience
 
 ;; Package-Version: 0.2.0

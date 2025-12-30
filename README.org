@@ -1,0 +1,31 @@
+#+title: visual-shorthands - Purely visual prefix abbreviations
+
+Visual-shorthands provides display-only abbreviations for long symbol prefixes
+using overlays. Unlike Emacs' [[https://www.gnu.org/software/emacs/manual/html_node/elisp/Shorthands.html][built-in]] ~read-symbol-shorthands~, which requires
+file-local variables and affects eval, visual-shorthands operates purely at the
+display layer and can be toggled interactively.
+
+The package is designed for /reading/ code written by others with verbose naming
+conventions, such as Emacs Lisp code and packages, but it can still be used in
+other languages like Lisps, python, etc. If you need actual Namespaces, use the
+[[https://www.gnu.org/software/emacs/manual/html_node/elisp/Shorthands.html][built-in shorthands]]. Symbols are automatically revealed when the cursor enters
+them, allowing normal navigation and editing of the actual buffer text.
+
+* Screenshots
+#+begin_quote
+[!TIP]
+Also using [[https://github.com/gggion/lisp-docstring-toggle][lisp-docstring-toggle]] to hide docstrings in the buffer for readability's sake.
+#+end_quote
+
+[[https://github.com/gggion/visual-shorthands.el/blob/screenshots/visual-shorthands.gif?raw=true]]
+
+* Commands
+#+begin_quote
+[!NOTE]
+Mappings are buffer-local.
+#+end_quote
+
+| ~visual-shorthands-mode~           | Toggle visual shorthand overlays with auto-reveal in current buffer. |
+| ~visual-shorthands-add-mapping~    | Add visual shorthand mapping from LONGHAND to SHORTHAND.             |
+| ~visual-shorthands-clear-mappings~ | Clear all visual shorthand mappings.                                 |
+| ~visual-shorthands-remove-mapping~ | Remove visual shorthand mapping for LONGHAND.                        |
