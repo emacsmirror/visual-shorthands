@@ -32,33 +32,32 @@ Mappings are buffer-local.
 
 * Installation
 
-+ Vanilla Emacs :: Clone the repository and load the package:
+visual-shorthands is on MELPA, so you can run =M-x package-install= ⏎ =visual-shorthands= in Emacs.
 
+- Manual  ::
+Clone or download this repository and run =M-x package-install-file= ⏎ on the repository directory.
+
+Or from =use-package= (Emacs 30+):
 #+begin_src emacs-lisp
-(add-to-list 'load-path "/path/to/visual-shorthands")
-(require 'visual-shorthands)
+(use-package visual-shorthands
+  :vc ( :url "https://github.com/gggion/visual-shorthands.el"
+             :rev :newest)
+  :hook (emacs-lisp-mode . visual-shorthands-mode))
 #+end_src
 
-+ Doom Emacs :: Add to =packages.el= and =config.el=
-
+- Straight or Elpaca  ::
 #+begin_src emacs-lisp
-;; package.el
-(package! visual-shorthands
-  :recipe (:host github :repo "gggion/visual-shorthands.el"))
-
-;; config.el
-(use-package! visual-shorthands
-  :config
-  (add-hook 'emacs-lisp-mode-hook #'visual-shorthands-mode))
+(straight-use-package 'visual-shorthands) 
+;; OR
+(elpaca visual-shorthands)
 #+end_src
 
-+ use-package with straight.el ::
+Or from =use-package=:
 
 #+begin_src emacs-lisp
 (use-package visual-shorthands
-  :straight (:host github :repo "gggion/visual-shorthands.el")
-  :config
-  (add-hook 'emacs-lisp-mode-hook #'visual-shorthands-mode))
+  :straight t  ; use :ensure t for Elpaca
+  :hook (emacs-lisp-mode . visual-shorthands-mode))
 #+end_src
 
 * Configuration
