@@ -481,6 +481,19 @@ Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
   (message "Cleared all visual shorthand mappings"))
 
 ;;;###autoload
+(defun visual-shorthands-refresh ()
+  "Refresh visual shorthand overlays in current buffer.
+Removes all existing overlays and reapplies based on current buffer
+content and `visual-shorthands-alist'.
+
+Useful modfifying the current buffer.  Can be added to hooks for
+automatic refresh."
+  (interactive)
+  (when visual-shorthands-mode
+    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
+    (visual-shorthands--apply-to-buffer)))
+
+;;;###autoload
 (defun visual-shorthands-setup (mappings)
   "Set up visual shorthands with MAPPINGS and enable mode."
   (setq visual-shorthands-alist
