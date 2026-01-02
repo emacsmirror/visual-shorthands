@@ -194,6 +194,8 @@ Uses invisible property on the longhand prefix and before-string for shorthand."
   (save-excursion
     (save-restriction
       (widen)
+      ;; Remove existing overlays first to prevent duplicates
+      (remove-overlays (point-min) (point-max) 'visual-shorthand t)
       (font-lock-ensure (point-min) (point-max))
       ;; Add to invisibility spec
       (add-to-invisibility-spec 'visual-shorthands)
@@ -291,18 +293,6 @@ When RENEW is non-nil, obtain symbol bounds at point instead."
   "Signal that symbols in current buffer should be revealed on change."
   (setq visual-shorthands--do-reveal t))
 
-(defun visual-shorthands--before-revert ()
-  "Remove overlays before buffer revert.
-Installed on `before-revert-hook' when mode is active."
-  (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)))
-
-(defun visual-shorthands--after-revert ()
-  "Reapply overlays after buffer revert.
-Installed on `after-revert-hook' when mode is active."
-  (when visual-shorthands-mode
-    (visual-shorthands--apply-to-buffer)))
-
 ;;;###autoload
 (define-minor-mode visual-shorthands-mode
   "Toggle visual shorthand overlays with auto-reveal in current buffer.
@@ -321,10 +311,8 @@ actual buffer text."
   (cond
    (visual-shorthands-mode
     ;; Enable mode
-    (visual-shorthands--apply-to-buffer)
+    (visual-shorthands-refresh)
     (add-hook 'post-command-hook #'visual-shorthands--post-cmd nil t)
-    (add-hook 'before-revert-hook #'visual-shorthands--before-revert nil t)
-    (add-hook 'after-revert-hook #'visual-shorthands--after-revert nil t)
     (when (eq visual-shorthands-trigger 'on-change)
       (add-hook 'after-change-functions #'visual-shorthands--after-change nil t)))
 
@@ -338,13 +326,25 @@ actual buffer text."
     (remove-overlays (point-min) (point-max) 'visual-shorthand t)
     (remove-from-invisibility-spec 'visual-shorthands)
     (remove-hook 'post-command-hook #'visual-shorthands--post-cmd t)
-    (remove-hook 'before-revert-hook #'visual-shorthands--before-revert t)
-    (remove-hook 'after-revert-hook #'visual-shorthands--after-revert t)
     (when (eq visual-shorthands-trigger 'on-change)
       (remove-hook 'after-change-functions #'visual-shorthands--after-change t))
     (setq visual-shorthands--prev-symbol nil
           visual-shorthands--symbol-revealed nil
           visual-shorthands--do-reveal nil))))
+
+;;;###autoload
+(defun turn-on-visual-shorthands-mode ()
+  "Turn on `visual-shorthands-mode' if appropriate.
+Does not enable the mode if `visual-shorthands-alist' is nil."
+  (when visual-shorthands-alist
+    (visual-shorthands-mode 1)))
+
+;;;###autoload
+(define-globalized-minor-mode global-visual-shorthands-mode
+  visual-shorthands-mode
+  turn-on-visual-shorthands-mode
+  :group 'visual-shorthands
+  :require 'visual-shorthands)
 
 ;;;; Preview Highlights
 (defun visual-shorthands--preview-cleanup ()
@@ -424,7 +424,8 @@ Mappings are sorted by descending LONGHAND length for correct matching.
 If `visual-shorthands-mode' is active, immediately applies overlays
 to all matching symbols.
 
-Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
+Also see `visual-shorthands-remove-mapping' and
+`visual-shorthands-clear-mappings'."
   (interactive
    (progn
      (add-hook 'minibuffer-setup-hook
@@ -449,10 +450,14 @@ Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
         (sort visual-shorthands-alist
               (lambda (a b) (> (length (car a)) (length (car b))))))
 
+  ;; Enable mode if global mode is active but local mode isn't
+  (when (and global-visual-shorthands-mode
+             (not visual-shorthands-mode))
+    (visual-shorthands-mode 1))
+
   ;; Refresh if mode active
   (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (visual-shorthands--apply-to-buffer))
+    (visual-shorthands-refresh))
 
   (message "Added mapping: %s → %s" longhand shorthand))
 
@@ -466,8 +471,7 @@ Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
   (setq visual-shorthands-alist
         (assoc-delete-all longhand visual-shorthands-alist))
   (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (visual-shorthands--apply-to-buffer))
+    (visual-shorthands-refresh))
   (message "Removed mapping for: %s" longhand))
 
 ;;;###autoload
@@ -486,12 +490,14 @@ Also see `visual-shorthands-remove-mapping' `visual-shorthands-clear-mappings'."
 Removes all existing overlays and reapplies based on current buffer
 content and `visual-shorthands-alist'.
 
-Useful modfifying the current buffer.  Can be added to hooks for
-automatic refresh."
+Safe to call whether or not `visual-shorthands-mode' is active.
+Does nothing if `visual-shorthands-alist' is nil.
+
+Useful after yanking code or modifying symbol names.  Can be added to
+hooks for automatic refresh:
+    (add-hook \\='after-save-hook #\\='visual-shorthands-refresh nil t)"
   (interactive)
-  (when visual-shorthands-mode
-    (remove-overlays (point-min) (point-max) 'visual-shorthand t)
-    (visual-shorthands--apply-to-buffer)))
+  (visual-shorthands--apply-to-buffer))
 
 ;;;###autoload
 (defun visual-shorthands-setup (mappings)
