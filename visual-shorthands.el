@@ -98,7 +98,17 @@ Longer prefixes should come first for correct matching.")
 
 (defconst visual-shorthands--symbol-regexp
   "\\_<\\([[:alpha:]][[:alnum:]-_]*\\)\\_>"
-  "Regexp matching Emacs Lisp symbol names.")
+  "Regexp matching symbol names in current buffer's syntax.
+
+Matches sequences starting with alphabetic character followed by
+alphanumeric characters, hyphens, or underscores, bounded by word
+boundaries as defined by current syntax table.
+
+The pattern adapts to each major mode's syntax table, matching valid
+identifiers multiple languages languages.
+
+Used by `visual-shorthands--apply-to-region' to locate symbols for
+shorthand replacement.")
 
 (defvar-local visual-shorthands--preview-overlays nil
   "List of overlays showing preview of shorthand mapping.
