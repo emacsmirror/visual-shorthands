@@ -61,24 +61,92 @@ Or from =use-package=:
 #+end_src
 
 * Configuration
-+ Setup ::
+** Quicksart: Global Mode
+
+Enable visual-shorthands-mode automatically in all buffers where mappings exist:
 
 #+begin_src emacs-lisp
 (use-package visual-shorthands
   :config
-  ;; Enable in specific modes
-  (add-hook 'emacs-lisp-mode-hook #'visual-shorthands-mode))
+  (global-visual-shorthands-mode 1))
 #+end_src
 
-+ Interactive Mapping Creation :: As shown in the above gif, call ~M-x visual-shorthands-add-mapping~ to create mappings interactively. As you type the longhand prefix, matching symbols in the buffer are highlighted with ~visual-shorthands-preview-face~, needs the mode to be active in the buffer.
+Then you have a few different options for adding shorthand mappings:
 
-+ Project-Specific Configuration :: You can also use directory-local variables for project-specific mappings.
+- Interactive Mapping Creation :: The fastest, easiest way to add a visual-shorthands is by calling the command ~M-x visual-shorthands-add-mapping~ to create mappings interactively. As you type the longhand prefix, matching symbols in the buffer are highlighted with ~visual-shorthands-preview-face~.
+
+  #+begin_quote
+  [!NOTE]
+  If ~global-visual-shorthands-mode~ is active, the mode enables automatically when you add a mapping to a buffer.
+  #+end_quote
+
+- file-local variables ::
+
+#+begin_src emacs-lisp
+;; At end of your .el file:
+;; Local Variables:
+;; visual-shorthands-alist: (("visual-shorthands-" . "vs:") ("visual-shorthands--" . "vs--"))
+;; End:
+#+end_src
+
+- per-project in .dir-locals.el ::
 
 #+begin_src emacs-lisp
 ;; In .dir-locals.el at project root
-((nil . ((eval . (progn
-                   (visual-shorthands-add-mapping "package-function-long-prefix--" "pflp:")
-                   (visual-shorthands-mode 1))))))
+((emacs-lisp-mode . ((visual-shorthands-alist
+                      . (("package-long-prefix-" . "plp:")
+                         ("package-long-prefix--" . "plp--"))))))
 #+end_src
 
+** Advanced: manual refresh or auto-refresh on save
+For refreshing shorthands on the current buffer, you can use ~visual-shorthands-refresh~, either manually through a binding / ~M-x~ or configure it to be execute on certain actions like saving or modifying the buffer.
+
+For refreshing shorthands on buffer save you can do: 
+
+- buffer-local refresh :: Hook is added /only/ in buffers where ~visual-shorthands-mode~ is active
+
+#+begin_src emacs-lisp
+(use-package visual-shorthands
+  :config
+  (global-visual-shorthands-mode 1)
+
+  (add-hook 'visual-shorthands-mode-hook
+          (lambda ()
+            (when visual-shorthands-mode
+              (add-hook 'after-save-hook #'visual-shorthands-refresh nil t)))))
+#+end_src
+
+** Advanced: automatically apply shorthands while editing
+If you want the refresh to happen while editing, not just on save. We can do so
+by using ~after-change-functions~:
+
+#+begin_src emacs-lisp
+(use-package visual-shorthands
+  :config
+  (global-visual-shorthands-mode 1)
+  (add-hook 'visual-shorthands-mode-hook
+            (lambda ()
+              (when visual-shorthands-mode
+                (add-hook 'after-change-functions
+                          (lambda (&rest _) (visual-shorthands-refresh))
+                          nil t)))))
+#+end_src
+
+#+begin_quote
+[!WARNING]
+Refreshing on every modification is expensive for large buffers. Consider refreshing manually through ~visual-shorthands-refresh~.
+#+end_quote
+
+** Customization
+
+See ~M-x customize-group RET visual-shorthands RET~ for all options.
+
+Key customization variables:
+
+- ~visual-shorthands-trigger~ :: Control when symbols are revealed
+  - ~'always~ (default): Reveal when cursor enters symbol
+  - ~'on-change~: Reveal only when buffer is modified
+
+- ~visual-shorthands-delay~ :: Delay in seconds before revealing (default: 0.0)
+- ~visual-shorthands-face~ :: Face for shorthand display
 
