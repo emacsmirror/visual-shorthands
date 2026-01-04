@@ -29,6 +29,7 @@ Mappings are buffer-local.
 | ~visual-shorthands-add-mapping~    | Add visual shorthand mapping from LONGHAND to SHORTHAND.             |
 | ~visual-shorthands-clear-mappings~ | Clear all visual shorthand mappings.                                 |
 | ~visual-shorthands-remove-mapping~ | Remove visual shorthand mapping for LONGHAND.                        |
+| ~visual-shorthands-refresh~        | Refresh all overlays visual shorthand.                               |
 
 * Installation
 
