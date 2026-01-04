@@ -164,13 +164,6 @@ Uses invisible property on the longhand prefix and before-string for shorthand."
                      ;; Make visible
                      (overlay-put ov 'invisible nil)
                      (overlay-put ov 'before-string nil))))
-
-    ;; TODO 2026-01-02: Optimize overlay property storage
-    ;; Store shorthand-string as 'visual-shorthand-string property instead of
-    ;; keeping 'visual-shorthand-data. That would eliminate propertize calls in
-    ;; visual-shorthands--hide-symbol. Seems like we're currently reconstructing
-    ;; the propertized string on every hide operation.
-
     overlay))
 
 (defun visual-shorthands--apply-to-region (start end)
